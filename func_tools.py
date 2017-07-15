@@ -10,6 +10,12 @@ import itertools
 import operator
 
 def word_grams(words, min_v=1, max_v=4):
+    """
+    :param words: one long string without spaces
+    :param min_v: min_v length of ngram that'll be returned
+    :param max_v: max-1 length of ngram that'll be returned
+    :return: array of all ngrams from min_v to max_v-1 collected form words
+    """
     s = []
     for n in range(min_v, max_v):
         for ngram in ngrams(words, n):
@@ -17,18 +23,36 @@ def word_grams(words, min_v=1, max_v=4):
     return s
 
 
-def build_letter_hist(rep, figsize=(5, 5), threshold=0):
-    letter_counts = Counter(np.hstack(rep))
+def build_letter_hist(rep_ngram, figsize=(5, 5), threshold=0):
+    """
+    Draw ngrams frequencies histogram
+    :param rep: array of ngrams for every element in repertoire. Example: ['AAAC', 'CCC'] -> rep = [['A A', 'A A', 'A C'], ['C C', 'C C']]
+    :param figsize: matplotlib figsize arg for plot
+    :param threshold: drop ngrams with frequency lower than threshold
+    :return: None
+    """
+    letter_counts = Counter(np.hstack(rep_ngram))
     letter_counts_new = drop_rare(letter_counts, threshold=threshold)
     df = pd.DataFrame.from_dict(letter_counts_new, orient='index')
     df.plot(kind='bar', figsize=figsize)
 
 
 def merge_subarrays(arr):
+    """
+    Merge subarrays in one long array. Example: [[1,2,3], [2,3,4]] -> [1,2,3,2,3,4]
+    :param arr: array of arrays to merge
+    :return: merged array
+    """
     return np.hstack(arr)
 
 
 def drop_rare(counter, threshold=0):
+    """
+    Drop elements from counter/dict with frequencies lower than threshold
+    :param counter:  Counter or dict object
+    :param threshold: int value
+    :return: changed Counter or dict object
+    """
     for k in list(counter):
         if counter[k] < threshold:
             del counter[k]
@@ -36,6 +60,12 @@ def drop_rare(counter, threshold=0):
 
 
 def calculate_prob(words, n=2):
+    """
+    Function calculate probability evaluations for letters following ngrams.
+    :param words: one long string obj
+    :param n: length of ngrams for which this function is used
+    :return: dictionary of dicts; ngram -> dict of probabilities 
+    """
     temp = np.array(list(words))
     result = {}
     for ngram in set(word_grams(words, min_v=n, max_v=n + 1)):
@@ -51,6 +81,11 @@ def calculate_prob(words, n=2):
 
 
 def id_to_read(filename):
+    """
+    Create dict object which map read id's from .fa file to actual read sequence
+    :param filename: filename of .fa file with read's and id's
+    :return: dict id -> sequence
+    """
     inp_seq = SeqIO.parse(filename, "fasta")
     inp_seq = list(inp_seq)
     read_id = [x.id for x in inp_seq]
@@ -60,11 +95,20 @@ def id_to_read(filename):
 
 
 def read_repertoire(filename):
-    temp = list(SeqIO.parse(filename, "fasta"))
-    return [str(x.seq) for x in temp]
+    """
+    Read repertoire from .fa into array
+    :param filename: filename of .fa file with repertoire
+    :return: array of strings
+    """
+    return map(lambda x: str(x.seq), SeqIO.parse('repertoire.fa', "fasta"))
 
 
 def read_rcm(filename):
+    """
+    Read .rcm file into dict obj "read_id" -> "cluster_id
+    :param filename:
+    :return:
+    """
     rcm = open(filename)
     rcm = rcm.readlines()
     rcm = [x[:-1] for x in rcm]

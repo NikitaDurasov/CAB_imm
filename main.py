@@ -1,6 +1,5 @@
 from func_tools import *
-#from ig_repertoire_constructor import igquast
+from Bio import SeqIO
 
-#res = igquast.RepertoireMatch('repertoire.fa', 'input_reads.fa')
+print calculate_prob('sasdasdasdsdfasdfasdfasdsasdfasdasdfasdfasdfasd')
 
-print split_cluster(['ACCGG', 'ACCGG', 'ACGGG'], 3)
