@@ -159,7 +159,7 @@ def cluster_variety(cluster):
     Constructs default dict obj, that consists of elements (position in cluster) -> Counter obj, where Counter count
     frequencies of every letter appeared in particulat position
     :param cluster: list of reads
-    :return: dict odj with (position in cluster) -> Counter obj
+    :return: dict odj with (position in cluster) -> (Counter obj) or 0 if there is no any variations
     """
     letter_matrix = []
     res = defaultdict(lambda: 0)
@@ -175,10 +175,10 @@ def cluster_variety(cluster):
 
 def second_vote(cluster):
     """
-    For every position in cluster function calculates second voter value - frequency of second the most frequent letter
+    For every position in cluster function calculates second vote value - frequency of second the most frequent letter
     in position
     :param cluster: list of reads
-    :return: dict odj with (position in cluster) -> second vote value
+    :return: dict odj with (position in cluster) -> (second vote value)
     """
     res = defaultdict(lambda: 0)
     for key, value in cluster_variety(cluster).items():
@@ -250,9 +250,14 @@ def top_massive_clusters(clusters, res_dict, n=10):
 
     return res
 
-#--------------------------------------------------------------------------------------------------------------------
 
-def precision_sensetivity_F1(constructed, reference):
+def precision_sensitivity_F1(constructed, reference):
+    """
+    Calculates F1 for precision and sensitivity for constructed and reference repertoire
+    :param constructed: constructed repertoire - list of strings
+    :param reference: reference repertoire - list of strings
+    :return: double value F1
+    """
     ref = set(reference)
     con = set(constructed)
 
@@ -264,29 +269,17 @@ def precision_sensetivity_F1(constructed, reference):
     return 2.0 * precision * sensitivity / (precision + sensitivity)
 
 
-def true_false_count(constructed, reference):
-    true = false = 0
-    ref = set(reference)
-    con = set(constructed)
-    for item in con:
-        if item in ref:
-            true += 1
-        else:
-            false += 1
-    return (true, false)
-
-
 def split_cluster(cluster, position):
     """
-    Try some other variants
-    :param cluster:
-    :param position:
-    :return:
+    Splits cluster into two clusters by position using second vote value
+    :param cluster: list of reads
+    :param position: int value
+    :return: list of parts of divided cluster; if new cluster cardinality is lower than 5, then this splitted part
+    turned to empty list
     """
-
     position_variation = cluster_variety(cluster)[position]
     if not position_variation:
-        return [cluster]
+        return [cluster, []]
     letter_for_split = find_max_dict(position_variation)
     first_splitted_part = []
     second_splitted_part = []
@@ -297,15 +290,29 @@ def split_cluster(cluster, position):
         else:
             second_splitted_part.append(item)
 
-    return (first_splitted_part, second_splitted_part)
+    return check_size(first_splitted_part, second_splitted_part)
 
+#--------------------------------------------------------------------------------------------------------------------
 
 def find_max_dict(dictionary):
-    return max(dictionary.iteritems(), key=operator.itemgetter(1))[0]
+    return max(dictionary.iteritems(), key=operator.itemgetter(1))[0] if dictionary else -1
+
+def check_size(first_splitted_part, second_splitted_part, threshold=5):
+    if len(first_splitted_part) < threshold and len(second_splitted_part) < threshold:
+        return [[], []]
+
+    elif len(first_splitted_part) < threshold and len(second_splitted_part) >= threshold:
+        return [second_splitted_part, []]
+
+    elif len(first_splitted_part) >= threshold and len(second_splitted_part) < threshold:
+        return [first_splitted_part, []]
+
+    else:
+        return (first_splitted_part, second_splitted_part)
 
 def split_by_2nd_vote(cluster):
     max_2nd_vote_pos = find_max_dict(second_vote(cluster))
-    return split_cluster(cluster, max_2nd_vote_pos)
+    return split_cluster(cluster, max_2nd_vote_pos) if max_2nd_vote_pos != -1 else check_size(cluster, [])
 
 def clusters2rep(clusters):
     rep = {}
@@ -326,7 +333,7 @@ def quality(constructed_rep, reference, type='sum'):
         return (precision + sensitivity) / 2
 
     elif type == 'F1':
-        return precision_sensetivity_F1(constructed_rep, reference)
+        return precision_sensitivity_F1(constructed_rep, reference)
 
     elif type == 'mult':
         ref = set(reference)
@@ -356,7 +363,7 @@ def clusters_classification(clusters, reference, constructed_rep):
         temp_clusters = constructed_rep.copy()
         temp_clusters[key] = major_vote(first_part)
         temp_clusters[new_num] = major_vote(second_part)
-        curr_quality = precision_sensetivity_F1(temp_clusters.values(), reference)
+        curr_quality = precision_sensitivity_F1(temp_clusters.values(), reference)
         if curr_quality > quality_0:
             quality_0 = curr_quality
             res[key] = 1
@@ -367,7 +374,7 @@ def clusters_classification(clusters, reference, constructed_rep):
     return res
 
 
-def simple_clusters_classification(clusters, reference, constructed_rep):
+def simple_clusters_classification(clusters, reference):
     ref = set(reference)
     res = {}
     for i, key in enumerate(clusters):
@@ -380,29 +387,53 @@ def simple_clusters_classification(clusters, reference, constructed_rep):
             continue
 
         first_part, second_part = split_by_2nd_vote(clusters[key])
-        first_cons, second_cons = major_vote(first_part), major_vote(second_part)
         cluster_major = major_vote(clusters[key])
 
-        if cluster_major in ref:
-            if ((first_cons in ref) and (second_cons not in ref)) or ((second_cons in ref) and (first_cons not in ref)):
-                res[key] = -1
+        if len(first_part)*len(second_part):
 
-            elif ((first_cons in ref) and (second_cons in ref)):
-                res[key] = 1
+            first_cons, second_cons = major_vote(first_part), major_vote(second_part)
 
-            elif ((first_cons not in ref) and (second_cons not in ref)):
-                res[key] = -1
+            if cluster_major in ref:
+                if ((first_cons in ref) and (second_cons not in ref)) or ((second_cons in ref) and (first_cons not in ref)):
+                    res[key] = -1
+
+                elif first_cons in ref and second_cons in ref:
+                    res[key] = 1
+
+                elif first_cons not in ref and second_cons not in ref:
+                    res[key] = -1
+            else:
+                if ((first_cons in ref) and (second_cons not in ref)) or ((second_cons in ref) and (first_cons not in ref)):
+                    res[key] = 1
+
+                elif first_cons in ref and second_cons in ref:
+                    res[key] = 1
+
+                elif first_cons not in ref and second_cons not in ref:
+                    res[key] = -1
+
         else:
-            if ((first_cons in ref) and (second_cons not in ref)) or ((second_cons in ref) and (first_cons not in ref)):
-                res[key] = 1
+            if len(first_part):
+                if cluster_major in reference:
+                    res[key] = -1
+                else:
+                    if major_vote(first_part):
+                        res[key] = 1
+                    else:
+                        res[key] = -1
 
-            elif ((first_cons in ref) and (second_cons in ref)):
-                res[key] = 1
-
-            elif ((first_cons not in ref) and (second_cons not in ref)):
+            elif len(second_part):
+                if cluster_major in reference:
+                    res[key] = -1
+                else:
+                    if major_vote(second_part):
+                        res[key] = 1
+                    else:
+                        res[key] = -1
+            else:
                 res[key] = -1
-    return res
 
+    return res
 
 def clusters_filtering(clusters, threshold=5):
     filtered_clusters = {}
