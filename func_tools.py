@@ -61,7 +61,7 @@ def drop_rare(counter, threshold=0):
 
 def calculate_prob(words, n=2):
     """
-    Function calculate probability evaluations for letters following ngrams.
+    Function calculates probability evaluations for letters following ngrams.
     :param words: one long string obj
     :param n: length of ngrams for which this function is used
     :return: dictionary of dicts; ngram -> dict of probabilities 
@@ -82,7 +82,7 @@ def calculate_prob(words, n=2):
 
 def id_to_read(filename):
     """
-    Create dict object which map read id's from .fa file to actual read sequence
+    Creates dict object which map read id's from .fa file to actual read sequence
     :param filename: filename of .fa file with read's and id's
     :return: dict id -> sequence
     """
@@ -115,14 +115,25 @@ def read_rcm(filename):
     return dict(map(lambda x: x.split("\t"), rcm))
 
 
-def construct_clusters(rcm_dict):
+def construct_clusters(rcm_dict, id_dict):
+    """
+    Function constructs clusters dict (cluster number) -> (array of reads included into this cluster)
+    :param rcm_dict: dict obj with reads ids -> cluster number
+    :param id_dict: dict obj with reads ids -> array of reads included into this cluster
+    :return: dict obj with cluster number -> array of reads included into this cluster
+    """
     clusters = defaultdict(lambda: [])
-    for value, key in rcm.items():
+    for value, key in rcm_dict.items():
         clusters[key].append(id_dict[value])
     return clusters
 
 
 def max_character(arr):
+    """
+    Find maximum element in the string arr (order is desc: a<z)
+    :param arr: string or list of characters
+    :return: maximum element in the string or list of characters
+    """
     max_ch = 'A'
     for letter in arr:
         if max_ch < letter:
@@ -131,6 +142,11 @@ def max_character(arr):
 
 
 def min_character(arr):
+    """
+    Find minimum element in the string arr (order is desc: a<z)
+    :param arr: string or list of characters
+    :return: minimum element in the string or list of characters
+    """
     min_ch = 'Z'
     for letter in arr:
         if min_ch > letter:
@@ -139,6 +155,12 @@ def min_character(arr):
 
 
 def cluster_variety(cluster):
+    """
+    Constructs default dict obj, that consists of elements (position in cluster) -> Counter obj, where Counter count
+    frequencies of every letter appeared in particulat position
+    :param cluster: list of reads
+    :return: dict odj with (position in cluster) -> Counter obj
+    """
     letter_matrix = []
     res = defaultdict(lambda: 0)
     for read in cluster:
@@ -152,6 +174,12 @@ def cluster_variety(cluster):
 
 
 def second_vote(cluster):
+    """
+    For every position in cluster function calculates second voter value - frequency of second the most frequent letter
+    in position
+    :param cluster: list of reads
+    :return: dict odj with (position in cluster) -> second vote value
+    """
     res = defaultdict(lambda: 0)
     for key, value in cluster_variety(cluster).items():
         temp = sorted(value.values())
@@ -160,6 +188,11 @@ def second_vote(cluster):
 
 
 def major_vote(cluster):
+    """
+    Calculates word with the most frequent letter in every position
+    :param cluster: list of reads
+    :return: string
+    """
     ans = list(max(cluster, key=len))
     res = {}
     for key, value in cluster_variety(cluster).items():
@@ -171,6 +204,12 @@ def major_vote(cluster):
 
 
 def second_votes(clusters):
+    """
+    For every cluster in clusters and for every position in cluster function calculates second voter value -
+    frequency of second the most frequent letter in position
+    :param clusters: dict obj with (cluster number) -> (list of reads)
+    :return: dict obj with (cluster number) -> (dict obj with (position in cluster) -> second vote value in this position)
+     """
     res = {}
     for key in clusters:
         res[key] = second_vote(clusters[key])
@@ -178,6 +217,11 @@ def second_votes(clusters):
 
 
 def clusters_size_dict(clusters):
+    """
+    Constructs dict obj consists of list lengths for every cluster in clusters
+    :param clusters: dict obj with (cluster number) -> (list of reads)
+    :return: dict obj with (cluster number) -> (list length)
+    """
     clusters_lenghts = {}
     for key in clusters:
         clusters_lenghts[key] = len(clusters[key])
@@ -185,6 +229,13 @@ def clusters_size_dict(clusters):
 
 
 def top_massive_clusters(clusters, res_dict, n=10):
+    """
+    Draw second votes graph of first n the most large clusters in clusters
+    :param clusters: dict obj with (cluster number) -> (list of reads)
+    :param res_dict: dict obj returned by second_votes function
+    :param n: number of drawn pictures
+    :return: list of list consists of second vote values for every position in n the most large clusters
+    """
     clusters_lenghts = clusters_size_dict(clusters)
     top_n = [x[0] for x in sorted(clusters_lenghts.items(), key=lambda x: x[1])[-n:]]
     res = []
@@ -198,6 +249,19 @@ def top_massive_clusters(clusters, res_dict, n=10):
         axes[j / 5, j % 5].set_ylim((0, 0.008))
 
     return res
+
+#--------------------------------------------------------------------------------------------------------------------
+
+def precision_sensetivity_F1(constructed, reference):
+    ref = set(reference)
+    con = set(constructed)
+
+    ref_con_intersection = ref.intersection(con)
+
+    precision = 1.0 * len(ref_con_intersection) / len(con)
+    sensitivity = 1.0 * len(ref_con_intersection) / len(ref)
+
+    return 2.0 * precision * sensitivity / (precision + sensitivity)
 
 
 def true_false_count(constructed, reference):
@@ -238,3 +302,111 @@ def split_cluster(cluster, position):
 
 def find_max_dict(dictionary):
     return max(dictionary.iteritems(), key=operator.itemgetter(1))[0]
+
+def split_by_2nd_vote(cluster):
+    max_2nd_vote_pos = find_max_dict(second_vote(cluster))
+    return split_cluster(cluster, max_2nd_vote_pos)
+
+def clusters2rep(clusters):
+    rep = {}
+    for key in clusters:
+        rep[key] = (major_vote(clusters[key]))
+    return rep
+
+
+def quality(constructed_rep, reference, type='sum'):
+    if type == 'sum':
+        ref = set(reference)
+        con = set(constructed_rep)
+
+        ref_con_intersection = ref.intersection(con)
+
+        precision = 1.0 * len(ref_con_intersection) / len(con)
+        sensitivity = 1.0 * len(ref_con_intersection) / len(ref)
+        return (precision + sensitivity) / 2
+
+    elif type == 'F1':
+        return precision_sensetivity_F1(constructed_rep, reference)
+
+    elif type == 'mult':
+        ref = set(reference)
+        con = set(constructed_rep)
+
+        ref_con_intersection = ref.intersection(con)
+
+        precision = 1.0 * len(ref_con_intersection) / len(con)
+        sensitivity = 1.0 * len(ref_con_intersection) / len(ref)
+        return precision * sensitivity
+
+
+def clusters_classification(clusters, reference, constructed_rep):
+    print "Repertoire construction started"
+    #constructed_rep = clusters2rep(clusters)
+    print "END"
+    quality_0 = quality(constructed_rep.values(), reference)
+    res = {}
+    new_num = max([int(key) for key in clusters.keys()]) + 1
+    for i, key in enumerate(clusters):
+        if i%1000 == 0:
+            print i
+        if not second_vote(clusters[key]):
+            res[key] = 0
+            continue
+        first_part, second_part = split_by_2nd_vote(clusters[key])
+        temp_clusters = constructed_rep.copy()
+        temp_clusters[key] = major_vote(first_part)
+        temp_clusters[new_num] = major_vote(second_part)
+        curr_quality = precision_sensetivity_F1(temp_clusters.values(), reference)
+        if curr_quality > quality_0:
+            quality_0 = curr_quality
+            res[key] = 1
+        elif curr_quality < quality_0:
+            res[key] = -1
+        else:
+            res[key] = 0
+    return res
+
+
+def simple_clusters_classification(clusters, reference, constructed_rep):
+    ref = set(reference)
+    res = {}
+    for i, key in enumerate(clusters):
+
+        if i % 100 == 0:
+            print i
+
+        if not second_vote(clusters[key]):
+            res[key] = 0
+            continue
+
+        first_part, second_part = split_by_2nd_vote(clusters[key])
+        first_cons, second_cons = major_vote(first_part), major_vote(second_part)
+        cluster_major = major_vote(clusters[key])
+
+        if cluster_major in ref:
+            if ((first_cons in ref) and (second_cons not in ref)) or ((second_cons in ref) and (first_cons not in ref)):
+                res[key] = -1
+
+            elif ((first_cons in ref) and (second_cons in ref)):
+                res[key] = 1
+
+            elif ((first_cons not in ref) and (second_cons not in ref)):
+                res[key] = -1
+        else:
+            if ((first_cons in ref) and (second_cons not in ref)) or ((second_cons in ref) and (first_cons not in ref)):
+                res[key] = 1
+
+            elif ((first_cons in ref) and (second_cons in ref)):
+                res[key] = 1
+
+            elif ((first_cons not in ref) and (second_cons not in ref)):
+                res[key] = -1
+    return res
+
+
+def clusters_filtering(clusters, threshold=5):
+    filtered_clusters = {}
+    for key in clusters:
+        if len(clusters[key]) > threshold:
+            filtered_clusters[key] = clusters[key]
+    return filtered_clusters
