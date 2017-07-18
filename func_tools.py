@@ -216,6 +216,15 @@ def second_votes(clusters):
     return res
 
 
+def second_vote_letter(cluster, position):
+    if not np.isnan(position):
+        variance = cluster_variety(cluster)[position]
+        temp = sorted(variance.items(), key=lambda x: x[1])
+        return temp[0]
+    else:
+        return ' '
+
+
 def clusters_size_dict(clusters):
     """
     Constructs dict obj consists of list lengths for every cluster in clusters
@@ -274,7 +283,7 @@ def split_cluster(cluster, position):
     Splits cluster into two clusters by position using second vote value
     :param cluster: list of reads
     :param position: int value
-    :return: list of parts of divided cluster; if new cluster cardinality is lower than 5, then this splitted part
+    :return: list of parts of divided clusters; if new cluster cardinality is lower than 5, then this splitted part
     turned to empty list
     """
     position_variation = cluster_variety(cluster)[position]
@@ -389,6 +398,8 @@ def simple_clusters_classification(clusters, reference):
         first_part, second_part = split_by_2nd_vote(clusters[key])
         cluster_major = major_vote(clusters[key])
 
+
+        #TO DO: REWRITE
         if len(first_part)*len(second_part):
 
             first_cons, second_cons = major_vote(first_part), major_vote(second_part)
@@ -432,12 +443,169 @@ def simple_clusters_classification(clusters, reference):
                         res[key] = -1
             else:
                 res[key] = -1
+        #END
 
     return res
 
 def clusters_filtering(clusters, threshold=5):
     filtered_clusters = {}
+
     for key in clusters:
         if len(clusters[key]) > threshold:
             filtered_clusters[key] = clusters[key]
+
     return filtered_clusters
+
+#def max_second_vote(second_vote):
+#    return {key: (np.max(second_vote[key].values()) if len(second_vote[key].values()) else 0) for key in second_vote}
+
+#def n_second_vote(second_vote, n=0):
+
+#   return {key: (sorted(second_vote[key].items(),
+#                                   key=lambda x: x[1],
+#                                   reverse=True)[n] if len(second_vote[key].values()) else (np.nan,0)) for key in second_vote}
+
+def n_second_vote(second_vote, n=0):
+    res  = {}
+    for key in second_vote:
+        if len(second_vote[key].values()) > n:
+            temp = sorted(second_vote[key].items(), key=lambda x: x[1], reverse=True)
+            res[key] = temp[n]
+        else:
+            res[key] = (np.nan, 0)
+    return res
+
+
+def find_context(repertoire, max_second_vote, n=2):
+    res = {}
+    for key in repertoire:
+        position = max_second_vote[key][0]
+        if not np.isnan(position):
+            sequence = " "*n + repertoire[key] + " "*n
+            res[key] = sequence[position:position+2*n+1]
+        else:
+            res[key] = " "*(2*n+1)
+    return res
+
+
+def build_df(input_reads, fa_reference, rcm_file):
+
+    id_dict = id_to_read(input_reads)
+    rep = read_repertoire(fa_reference)
+    igrec_rcm = read_rcm(rcm_file)
+
+    igrec_clusters = construct_clusters(igrec_rcm, id_dict)
+    igrec_rep = clusters2rep(igrec_clusters)
+    igrec_res = second_votes(clusters_filtering(igrec_clusters))
+
+    max_final_second_vote = n_second_vote(igrec_res)
+    max_2nd_final_second_vote = n_second_vote(igrec_res, n=1)
+    max_3nd_final_second_vote = n_second_vote(igrec_res, n=2)
+    sizes = clusters_size_dict(clusters_filtering(igrec_clusters))
+    context = find_context(igrec_rep, max_final_second_vote)
+
+    pos1 = {k: v[0] for k,v in max_final_second_vote.items()}
+    value1 = {k: v[1] for k,v in max_final_second_vote.items()}
+    pos2 = {k: v[0] for k,v in max_2nd_final_second_vote.items()}
+    value2 = {k: v[1] for k,v in max_2nd_final_second_vote.items()}
+    pos3 = {k: v[0] for k,v in max_3nd_final_second_vote.items()}
+    value3 = {k: v[1] for k,v in max_3nd_final_second_vote.items()}
+
+    context1 = {}
+    context2 = {}
+    context3 = {}
+    context4 = {}
+    context5 = {}
+
+    for key in context:
+        temp_arr = list(context[key])
+        context1[key] = temp_arr[0]
+        context2[key] = temp_arr[1]
+        context3[key] = temp_arr[2]
+        context4[key] = temp_arr[3]
+        context5[key] = temp_arr[4]
+
+    mutated_letter = {}
+    for key in igrec_res:
+        mutated_letter[key] = second_vote_letter(igrec_clusters[key], max_final_second_vote[key][0])
+
+    df = pd.DataFrame({'pos1':pos1, 'value1':value1,
+                        'pos2': pos2, 'value2': value2,
+                        'pos3': pos3, 'value3': value3,
+                        'context1': context1,
+                        'context2': context2,
+                        'context3': context3,
+                        'context4': context4,
+                        'context5': context5,
+                        'mutated_letter': mutated_letter,
+                        'size': sizes})
+
+    return df
+
+
+def build_df_test(igrec_clusters, igrec_rep, igrec_res):
+
+    # id_dict = id_to_read(input_reads)
+    # rep = read_repertoire(fa_reference)
+    # igrec_rcm = read_rcm(rcm_file)
+
+    #igrec_clusters = construct_clusters(igrec_rcm, id_dict)
+
+    # igrec_rep = clusters2rep(igrec_clusters )
+    # igrec_res = second_votes(clusters_filtering(igrec_clusters, threshold=0))
+
+    max_final_second_vote = n_second_vote(igrec_res)
+    max_2nd_final_second_vote = n_second_vote(igrec_res, n=1)
+    max_3nd_final_second_vote = n_second_vote(igrec_res, n=2)
+    sizes = clusters_size_dict(clusters_filtering(igrec_clusters))
+    context = find_context(igrec_rep, max_final_second_vote)
+
+    pos1 = {k: v[0] for k,v in max_final_second_vote.items()}
+    value1 = {k: v[1] for k,v in max_final_second_vote.items()}
+    pos2 = {k: v[0] for k,v in max_2nd_final_second_vote.items()}
+    value2 = {k: v[1] for k,v in max_2nd_final_second_vote.items()}
+    pos3 = {k: v[0] for k,v in max_3nd_final_second_vote.items()}
+    value3 = {k: v[1] for k,v in max_3nd_final_second_vote.items()}
+
+    context1 = {}
+    context2 = {}
+    context3 = {}
+    context4 = {}
+    context5 = {}
+
+    for key in context:
+        temp_arr = list(context[key])
+        context1[key] = temp_arr[0]
+        context2[key] = temp_arr[1]
+        context3[key] = temp_arr[2]
+        context4[key] = temp_arr[3]
+        context5[key] = temp_arr[4]
+
+    mutated_letter = {}
+    for key in igrec_res:
+        mutated_letter[key] = second_vote_letter(igrec_clusters[key], max_final_second_vote[key][0])
+
+    df = pd.DataFrame({'pos1':pos1, 'value1':value1,
+                        'pos2': pos2, 'value2': value2,
+                        'pos3': pos3, 'value3': value3,
+                        'context1': context1,
+                        'context2': context2,
+                        'context3': context3,
+                        'context4': context4,
+                        'context5': context5,
+                        'mutated_letter': mutated_letter,
+                        'size': sizes})
+
+    return df
+
+
+
+
+
+
+
+
+
+
+
+
