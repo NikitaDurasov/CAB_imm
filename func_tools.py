@@ -392,7 +392,7 @@ def simple_clusters_classification(clusters, reference):
             print i
 
         if not second_vote(clusters[key]):
-            res[key] = 0
+            res[key] = [-1, '?', '?', '?']
             continue
 
         first_part, second_part = split_by_2nd_vote(clusters[key])
@@ -406,43 +406,54 @@ def simple_clusters_classification(clusters, reference):
 
             if cluster_major in ref:
                 if ((first_cons in ref) and (second_cons not in ref)) or ((second_cons in ref) and (first_cons not in ref)):
-                    res[key] = -1
+                    res[key] = [-1, '+', '+', '-']
 
                 elif first_cons in ref and second_cons in ref:
-                    res[key] = 1
+                    res[key] = [1, '+', '+', '+']
 
                 elif first_cons not in ref and second_cons not in ref:
-                    res[key] = -1
+                    res[key] = [-1, '+', '-', '-']
             else:
                 if ((first_cons in ref) and (second_cons not in ref)) or ((second_cons in ref) and (first_cons not in ref)):
-                    res[key] = 1
+                    res[key] = [1, '-', '+', '-']
 
                 elif first_cons in ref and second_cons in ref:
-                    res[key] = 1
+                    res[key] = [1, '-', '+', '+']
 
                 elif first_cons not in ref and second_cons not in ref:
-                    res[key] = -1
+                    res[key] = [-1, '-', '-', '-']
 
         else:
             if len(first_part):
                 if cluster_major in reference:
-                    res[key] = -1
-                else:
-                    if major_vote(first_part):
-                        res[key] = 1
+                    if major_vote(first_part) in reference:
+                        res[key] = [-1, '+', '+', '?']
                     else:
-                        res[key] = -1
+                        res[key] = [-1, '+', '-', '?']
+                    # res[key] = [-1, '+', ]
+                else:
+                    if major_vote(first_part) in reference:
+                        res[key] = [1, '-', '+', '?']
+                    else:
+                        res[key] = [-1, '-', '-', '?']
 
             elif len(second_part):
                 if cluster_major in reference:
-                    res[key] = -1
-                else:
-                    if major_vote(second_part):
-                        res[key] = 1
+                    if major_vote(second_part) in reference:
+                        res[key] = [-1, '+', '?', '+']
                     else:
-                        res[key] = -1
+                        res[key] = [-1, '+', '?', '-']
+                    # res[key] = -1
+                else:
+                    if major_vote(second_part) in reference:
+                        res[key] = [1, '-', '?', '+']
+                    else:
+                        res[key] = [-1, '-', '?', '-']
             else:
-                res[key] = -1
+                if cluster_major in reference:
+                    res[key] = [-1, '+', '?', '?']
+                else:
+                    res[key] = [-1, '-', '?', '?']
         #END
 
     return res
@@ -489,14 +500,18 @@ def find_context(repertoire, max_second_vote, n=2):
 
 
 def build_df(input_reads, fa_reference, rcm_file):
+    print 'build_df started'
 
     id_dict = id_to_read(input_reads)
     rep = read_repertoire(fa_reference)
     igrec_rcm = read_rcm(rcm_file)
 
     igrec_clusters = construct_clusters(igrec_rcm, id_dict)
-    igrec_rep = clusters2rep(igrec_clusters)
-    igrec_res = second_votes(clusters_filtering(igrec_clusters))
+
+    igrec_rep = clusters2rep(igrec_clusters )
+    igrec_res = second_votes(clusters_filtering(igrec_clusters, threshold=0))
+
+    print 'calculation step'
 
     max_final_second_vote = n_second_vote(igrec_res)
     max_2nd_final_second_vote = n_second_vote(igrec_res, n=1)
@@ -504,12 +519,16 @@ def build_df(input_reads, fa_reference, rcm_file):
     sizes = clusters_size_dict(clusters_filtering(igrec_clusters))
     context = find_context(clusters_filtering(igrec_rep), max_final_second_vote)
 
-    pos1 = {k: v[0] for k,v in max_final_second_vote.items()}
-    value1 = {k: v[1] for k,v in max_final_second_vote.items()}
-    pos2 = {k: v[0] for k,v in max_2nd_final_second_vote.items()}
-    value2 = {k: v[1] for k,v in max_2nd_final_second_vote.items()}
-    pos3 = {k: v[0] for k,v in max_3nd_final_second_vote.items()}
-    value3 = {k: v[1] for k,v in max_3nd_final_second_vote.items()}
+    print 'parsing step'
+
+    pos1 = {k: v[0] for k, v in max_final_second_vote.items()}
+    value1 = {k: v[1] for k, v in max_final_second_vote.items()}
+    pos2 = {k: v[0] for k, v in max_2nd_final_second_vote.items()}
+    value2 = {k: v[1] for k, v in max_2nd_final_second_vote.items()}
+    pos3 = {k: v[0] for k, v in max_3nd_final_second_vote.items()}
+    value3 = {k: v[1] for k, v in max_3nd_final_second_vote.items()}
+
+    print 'context step'
 
     context1 = {}
     context2 = {}
@@ -525,20 +544,24 @@ def build_df(input_reads, fa_reference, rcm_file):
         context4[key] = temp_arr[3]
         context5[key] = temp_arr[4]
 
+    print 'mutation step'
+
     mutated_letter = {}
     for key in igrec_res:
         mutated_letter[key] = second_vote_letter(igrec_clusters[key], max_final_second_vote[key][0])
 
-    df = pd.DataFrame({'pos1':pos1, 'value1':value1,
-                        'pos2': pos2, 'value2': value2,
-                        'pos3': pos3, 'value3': value3,
-                        'context1': context1,
-                        'context2': context2,
-                        'context3': context3,
-                        'context4': context4,
-                        'context5': context5,
-                        'mutated_letter': mutated_letter,
-                        'size': sizes})
+    df = pd.DataFrame({'pos1': pos1, 'value1': value1,
+                       'pos2': pos2, 'value2': value2,
+                       'pos3': pos3, 'value3': value3,
+                       'context1': context1,
+                       'context2': context2,
+                       'context3': context3,
+                       'context4': context4,
+                       'context5': context5,
+                       'mutated_letter': mutated_letter,
+                       'size': sizes})
+
+    print 'building succeeded'
 
     return df
 
@@ -546,16 +569,6 @@ def build_df(input_reads, fa_reference, rcm_file):
 def build_df_test(igrec_clusters, igrec_rep, igrec_res):
 
     print 'build_df started'
-
-    # id_dict = id_to_read(input_reads)
-    # rep = read_repertoire(fa_reference)
-    # igrec_rcm = read_rcm(rcm_file)
-
-    #igrec_clusters = construct_clusters(igrec_rcm, id_dict)
-
-    # igrec_rep = clusters2rep(igrec_clusters )
-    # igrec_res = second_votes(clusters_filtering(igrec_clusters, threshold=0))
-
     print 'calculation step'
 
     max_final_second_vote = n_second_vote(igrec_res)
@@ -610,6 +623,29 @@ def build_df_test(igrec_clusters, igrec_rep, igrec_res):
     print 'building succeeded'
 
     return df
+
+def build_ans_df(answer_dict):
+
+    class_label = {}
+    origin_cluster = {}
+    first_cluster = {}
+    second_cluster = {}
+
+    for key in answer_dict:
+        temp_list = answer_dict[key]
+        class_label[key] = temp_list[0]
+        origin_cluster[key] = temp_list[1]
+        first_cluster[key] = temp_list[2]
+        second_cluster[key] = temp_list[3]
+
+    ans_df = pd.DataFrame({'quality_imp':class_label,
+                           'origin_cluster': origin_cluster,
+                           'first_cluster': first_cluster,
+                           'second_cluster': second_cluster})
+
+    ans_df.index = ans_df.index.map(int)
+
+    return ans_df
 
 
 
