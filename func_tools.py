@@ -100,7 +100,7 @@ def read_repertoire(filename):
     :param filename: filename of .fa file with repertoire
     :return: array of strings
     """
-    return map(lambda x: str(x.seq), SeqIO.parse('repertoire.fa', "fasta"))
+    return map(lambda x: str(x.seq), SeqIO.parse(filename, "fasta"))
 
 
 def read_rcm(filename):
@@ -499,7 +499,7 @@ def find_context(repertoire, max_second_vote, n=2):
     return res
 
 
-def build_df(input_reads, fa_reference, rcm_file):
+def build_df(input_reads, fa_reference, rcm_file, cdr_file): # FIX ME
     print 'build_df started'
 
     id_dict = id_to_read(input_reads)
@@ -508,7 +508,7 @@ def build_df(input_reads, fa_reference, rcm_file):
 
     igrec_clusters = construct_clusters(igrec_rcm, id_dict)
 
-    igrec_rep = clusters2rep(igrec_clusters )
+    igrec_rep = clusters2rep(igrec_clusters)
     igrec_res = second_votes(clusters_filtering(igrec_clusters, threshold=0))
 
     print 'calculation step'
@@ -518,6 +518,10 @@ def build_df(input_reads, fa_reference, rcm_file):
     max_3nd_final_second_vote = n_second_vote(igrec_res, n=2)
     sizes = clusters_size_dict(clusters_filtering(igrec_clusters))
     context = find_context(clusters_filtering(igrec_rep), max_final_second_vote)
+
+    second_vote_std = {}
+    for key in igrec_res:
+        second_vote_std[key] = np.std(igrec_res[key].values())
 
     print 'parsing step'
 
@@ -559,14 +563,30 @@ def build_df(input_reads, fa_reference, rcm_file):
                        'context4': context4,
                        'context5': context5,
                        'mutated_letter': mutated_letter,
-                       'size': sizes})
+                       'size': sizes,
+                       'second_vote_std': second_vote_std})
+
+    df.index
+
+    print 'read_cdr'
+
+    cdr_df = pd.read_csv(cdr_file, delimiter='\t')
+    cdr = cdr_df[['CDR1_start', 'CDR2_start', 'CDR3_start', 'CDR1_end', 'CDR2_end', 'CDR3_end']]
+    new_df = pd.concat([df, cdr], axis=1)
+
+    print 'answers DataFrame'
+
+    ans_dict = simple_clusters_classification(igrec_clusters, rep)
+    ans_df = build_ans_df(ans_dict)
+
+    final_df = pd.concat([new_df, ans_df], axis=1)
 
     print 'building succeeded'
 
-    return df
+    return final_df
 
 
-def build_df_test(igrec_clusters, igrec_rep, igrec_res):
+def build_df_preload(igrec_clusters, igrec_rep, igrec_res):
 
     print 'build_df started'
     print 'calculation step'
@@ -576,6 +596,10 @@ def build_df_test(igrec_clusters, igrec_rep, igrec_res):
     max_3nd_final_second_vote = n_second_vote(igrec_res, n=2)
     sizes = clusters_size_dict(clusters_filtering(igrec_clusters))
     context = find_context(clusters_filtering(igrec_rep), max_final_second_vote)
+
+    second_vote_std = {}
+    for key in igrec_res:
+        second_vote_std[key] = np.std(igrec_res[key].values())
 
     print 'parsing step'
 
@@ -617,8 +641,10 @@ def build_df_test(igrec_clusters, igrec_rep, igrec_res):
                         'context4': context4,
                         'context5': context5,
                         'mutated_letter': mutated_letter,
-                        'size': sizes})
+                        'size': sizes,
+                        'second_vote_std':second_vote_std})
 
+    df.index = df.index.map(int)
 
     print 'building succeeded'
 
@@ -646,6 +672,7 @@ def build_ans_df(answer_dict):
     ans_df.index = ans_df.index.map(int)
 
     return ans_df
+
 
 
 
