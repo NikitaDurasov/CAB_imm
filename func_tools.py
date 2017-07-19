@@ -220,7 +220,7 @@ def second_vote_letter(cluster, position):
     if not np.isnan(position):
         variance = cluster_variety(cluster)[position]
         temp = sorted(variance.items(), key=lambda x: x[1])
-        return temp[0]
+        return temp[0][0]
     else:
         return ' '
 
@@ -502,7 +502,7 @@ def build_df(input_reads, fa_reference, rcm_file):
     max_2nd_final_second_vote = n_second_vote(igrec_res, n=1)
     max_3nd_final_second_vote = n_second_vote(igrec_res, n=2)
     sizes = clusters_size_dict(clusters_filtering(igrec_clusters))
-    context = find_context(igrec_rep, max_final_second_vote)
+    context = find_context(clusters_filtering(igrec_rep), max_final_second_vote)
 
     pos1 = {k: v[0] for k,v in max_final_second_vote.items()}
     value1 = {k: v[1] for k,v in max_final_second_vote.items()}
@@ -545,6 +545,8 @@ def build_df(input_reads, fa_reference, rcm_file):
 
 def build_df_test(igrec_clusters, igrec_rep, igrec_res):
 
+    print 'build_df started'
+
     # id_dict = id_to_read(input_reads)
     # rep = read_repertoire(fa_reference)
     # igrec_rcm = read_rcm(rcm_file)
@@ -554,11 +556,15 @@ def build_df_test(igrec_clusters, igrec_rep, igrec_res):
     # igrec_rep = clusters2rep(igrec_clusters )
     # igrec_res = second_votes(clusters_filtering(igrec_clusters, threshold=0))
 
+    print 'calculation step'
+
     max_final_second_vote = n_second_vote(igrec_res)
     max_2nd_final_second_vote = n_second_vote(igrec_res, n=1)
     max_3nd_final_second_vote = n_second_vote(igrec_res, n=2)
     sizes = clusters_size_dict(clusters_filtering(igrec_clusters))
-    context = find_context(igrec_rep, max_final_second_vote)
+    context = find_context(clusters_filtering(igrec_rep), max_final_second_vote)
+
+    print 'parsing step'
 
     pos1 = {k: v[0] for k,v in max_final_second_vote.items()}
     value1 = {k: v[1] for k,v in max_final_second_vote.items()}
@@ -566,6 +572,8 @@ def build_df_test(igrec_clusters, igrec_rep, igrec_res):
     value2 = {k: v[1] for k,v in max_2nd_final_second_vote.items()}
     pos3 = {k: v[0] for k,v in max_3nd_final_second_vote.items()}
     value3 = {k: v[1] for k,v in max_3nd_final_second_vote.items()}
+
+    print 'context step'
 
     context1 = {}
     context2 = {}
@@ -581,6 +589,8 @@ def build_df_test(igrec_clusters, igrec_rep, igrec_res):
         context4[key] = temp_arr[3]
         context5[key] = temp_arr[4]
 
+    print 'mutation step'
+
     mutated_letter = {}
     for key in igrec_res:
         mutated_letter[key] = second_vote_letter(igrec_clusters[key], max_final_second_vote[key][0])
@@ -595,6 +605,9 @@ def build_df_test(igrec_clusters, igrec_rep, igrec_res):
                         'context5': context5,
                         'mutated_letter': mutated_letter,
                         'size': sizes})
+
+
+    print 'building succeeded'
 
     return df
 
