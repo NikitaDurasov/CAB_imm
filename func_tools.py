@@ -388,7 +388,7 @@ def simple_clusters_classification(clusters, reference):
     res = {}
     for i, key in enumerate(clusters):
 
-        if i % 100 == 0:
+        if i % 1000 == 0:
             print i
 
         if not second_vote(clusters[key]):
@@ -467,14 +467,6 @@ def clusters_filtering(clusters, threshold=5):
 
     return filtered_clusters
 
-#def max_second_vote(second_vote):
-#    return {key: (np.max(second_vote[key].values()) if len(second_vote[key].values()) else 0) for key in second_vote}
-
-#def n_second_vote(second_vote, n=0):
-
-#   return {key: (sorted(second_vote[key].items(),
-#                                   key=lambda x: x[1],
-#                                   reverse=True)[n] if len(second_vote[key].values()) else (np.nan,0)) for key in second_vote}
 
 def n_second_vote(second_vote, n=0):
     res  = {}
@@ -516,21 +508,22 @@ def build_df(input_reads, fa_reference, rcm_file, cdr_file): # FIX ME
     max_final_second_vote = n_second_vote(igrec_res)
     max_2nd_final_second_vote = n_second_vote(igrec_res, n=1)
     max_3nd_final_second_vote = n_second_vote(igrec_res, n=2)
-    sizes = clusters_size_dict(clusters_filtering(igrec_clusters))
+    sizes = clusters_size_dict(igrec_clusters)
     context = find_context(clusters_filtering(igrec_rep), max_final_second_vote)
 
     second_vote_std = {}
     for key in igrec_res:
-        second_vote_std[key] = np.std(igrec_res[key].values())
+        second_vote_std[int(key)] = np.std(igrec_res[key].values())
 
     print 'parsing step'
 
-    pos1 = {k: v[0] for k, v in max_final_second_vote.items()}
-    value1 = {k: v[1] for k, v in max_final_second_vote.items()}
-    pos2 = {k: v[0] for k, v in max_2nd_final_second_vote.items()}
-    value2 = {k: v[1] for k, v in max_2nd_final_second_vote.items()}
-    pos3 = {k: v[0] for k, v in max_3nd_final_second_vote.items()}
-    value3 = {k: v[1] for k, v in max_3nd_final_second_vote.items()}
+    pos1 = {int(k): v[0] for k, v in max_final_second_vote.items()}
+    value1 = {int(k): v[1] for k, v in max_final_second_vote.items()}
+    pos2 = {int(k): v[0] for k, v in max_2nd_final_second_vote.items()}
+    value2 = {int(k): v[1] for k, v in max_2nd_final_second_vote.items()}
+    pos3 = {int(k): v[0] for k, v in max_3nd_final_second_vote.items()}
+    value3 = {int(k): v[1] for k, v in max_3nd_final_second_vote.items()}
+    sizes = {int(k): v for k, v in sizes.items()}
 
     print 'context step'
 
@@ -542,17 +535,17 @@ def build_df(input_reads, fa_reference, rcm_file, cdr_file): # FIX ME
 
     for key in context:
         temp_arr = list(context[key])
-        context1[key] = temp_arr[0]
-        context2[key] = temp_arr[1]
-        context3[key] = temp_arr[2]
-        context4[key] = temp_arr[3]
-        context5[key] = temp_arr[4]
+        context1[int(key)] = temp_arr[0]
+        context2[int(key)] = temp_arr[1]
+        context3[int(key)] = temp_arr[2]
+        context4[int(key)] = temp_arr[3]
+        context5[int(key)] = temp_arr[4]
 
     print 'mutation step'
 
     mutated_letter = {}
     for key in igrec_res:
-        mutated_letter[key] = second_vote_letter(igrec_clusters[key], max_final_second_vote[key][0])
+        mutated_letter[int(key)] = second_vote_letter(igrec_clusters[key], max_final_second_vote[key][0])
 
     df = pd.DataFrame({'pos1': pos1, 'value1': value1,
                        'pos2': pos2, 'value2': value2,
@@ -566,7 +559,7 @@ def build_df(input_reads, fa_reference, rcm_file, cdr_file): # FIX ME
                        'size': sizes,
                        'second_vote_std': second_vote_std})
 
-    df.index
+    df.index = df.index.map(int)
 
     print 'read_cdr'
 

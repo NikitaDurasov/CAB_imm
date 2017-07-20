@@ -9,9 +9,9 @@ from Bio import SeqIO
 #with open('final_res.pkl', 'rb') as inputio:
 #    final_res = pickle.load(inputio)
 
-with open('ans_dict.pkl', 'rb') as inputio:
-    ans_dict = pickle.load(inputio)
+with open('data/flu/final_res.pkl', 'rb') as inputio:
+    final_res = pickle.load(inputio)
 
 
-build_ans_df(ans_dict)
+
 
