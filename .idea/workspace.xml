@@ -1,12 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="9d926ca0-053b-4354-8a05-19450e4452c6" name="Default" comment="">
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.ipynb_checkpoints/base-checkpoint.ipynb" afterPath="$PROJECT_DIR$/.ipynb_checkpoints/base-checkpoint.ipynb" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/base.ipynb" afterPath="$PROJECT_DIR$/base.ipynb" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/func_tools.py" afterPath="$PROJECT_DIR$/func_tools.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/main.py" afterPath="$PROJECT_DIR$/main.py" />
-    </list>
+    <list default="true" id="9d926ca0-053b-4354-8a05-19450e4452c6" name="Default" comment="" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
