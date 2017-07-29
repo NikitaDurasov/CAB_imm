@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import pandas as pd
 from Bio import SeqIO
 from collections import Counter, defaultdict, OrderedDict
@@ -64,7 +63,7 @@ def calculate_prob(words, n=2):
     Function calculates probability evaluations for letters following ngrams.
     :param words: one long string obj
     :param n: length of ngrams for which this function is used
-    :return: dictionary of dicts; ngram -> dict of probabilities 
+    :return: dictionary of dicts; ngram -> dict of probabilities
     """
     temp = np.array(list(words))
     result = {}
@@ -235,29 +234,6 @@ def clusters_size_dict(clusters):
     for key in clusters:
         clusters_lenghts[key] = len(clusters[key])
     return clusters_lenghts
-
-
-def top_massive_clusters(clusters, res_dict, n=10):
-    """
-    Draw second votes graph of first n the most large clusters in clusters
-    :param clusters: dict obj with (cluster number) -> (list of reads)
-    :param res_dict: dict obj returned by second_votes function
-    :param n: number of drawn pictures
-    :return: list of list consists of second vote values for every position in n the most large clusters
-    """
-    clusters_lenghts = clusters_size_dict(clusters)
-    top_n = [x[0] for x in sorted(clusters_lenghts.items(), key=lambda x: x[1])[-n:]]
-    res = []
-    fig, axes = plt.subplots(ncols=5, nrows=(n - 1) / 5 + 1, figsize=(20, 10))
-    for j, key in enumerate(top_n):
-        res1 = [0] * 500
-        for i in range(500):
-            res1[i] += res_dict[str(key)][i] / n
-        res.append(res1[:])
-        axes[j / 5, j % 5].scatter(range(500), res1)
-        axes[j / 5, j % 5].set_ylim((0, 0.008))
-
-    return res
 
 
 def precision_sensitivity_F1(constructed, reference):
