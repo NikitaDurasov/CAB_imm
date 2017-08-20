@@ -804,6 +804,18 @@ def reference_classification(clusters, reference_rcm, reference, id_dict):
                 res[cluster] = 0
     return (res, clusters_perc)
 
+def find_unrecognized_clusters(reference_repertoire, constructed_repertoire):
+
+    res = []
+    rep, cons_rep = set(reference_repertoire.values()), set(constructed_repertoire.values())
+    clusters_intersection = set.intersection(rep, cons_rep)
+
+    for cluster in reference_repertoire:
+        if reference_repertoire[cluster] not in clusters_intersection:
+            res.append(cluster)
+
+    return res
+
 def compare_sizes(first_rcm_file, second_rcm_file, input_reads):
 
     id_dict = id_to_read(input_reads)
