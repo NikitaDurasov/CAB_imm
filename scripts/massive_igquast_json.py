@@ -8,8 +8,6 @@ directories =  list(os.walk(base))[0][1]
 
 regex = re.compile('.*_compilation')
 compilations = filter(regex.match, directories)
-compilations.remove('IDO_compilation')
-compilations.remove('GMC_compilation')
 
 for compilation in compilations:
     curr_dir = base + compilation + '/splitted'

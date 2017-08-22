@@ -1,3 +1,11 @@
 data/AGE1.csv
 
 data/FLU1.csv
+
+data/AGE2.csv
+
+data/FLU2.csv
+
+scripts/compile_df.pyc 
+
+scripts/func_tools.pyc

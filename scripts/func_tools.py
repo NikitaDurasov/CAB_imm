@@ -74,16 +74,16 @@ def read_repertoire(filename):
     """
     return map(lambda x: str(x.seq), SeqIO.parse(filename, "fasta"))
 
-
 def read_rcm(filename):
     """
-    Read .rcm file into dict obj "read_id" -> "cluster_id
+    Read .rcm file into dict obj "read_id" -> "cluster_id"
     :param filename:
     :return:
     """
     rcm = open(filename)
     rcm = rcm.readlines()
     rcm = [x[:-1] for x in rcm]
+    rcm.close()
     return dict(map(lambda x: x.split("\t"), rcm))
 
 
@@ -478,6 +478,7 @@ def build_df(input_reads, rcm_file, rcm_reference=None, fa_reference=None,
     igrec_rcm = read_rcm(rcm_file)
 
     igrec_clusters = construct_clusters(igrec_rcm, id_dict)
+    print 'All clusters: ', len(igrec_clusters)
     igrec_clusters = clusters_filtering(igrec_clusters, threshold=threshold)
 
     igrec_rep = clusters2rep(igrec_clusters)
@@ -489,56 +490,59 @@ def build_df(input_reads, rcm_file, rcm_reference=None, fa_reference=None,
     max_2nd_final_second_vote = n_second_vote(igrec_res, n=1)
     max_3nd_final_second_vote = n_second_vote(igrec_res, n=2)
     sizes = clusters_size_dict(igrec_clusters)
-    context = find_context(clusters_filtering(igrec_rep), max_final_second_vote)
+    #context = find_context(clusters_filtering(igrec_rep), max_final_second_vote)
 
-    second_vote_std = {}
-    for key in igrec_res:
-        second_vote_std[int(key)] = np.std(igrec_res[key].values())
+    #second_vote_std = {}
+    #for key in igrec_res:
+    #    second_vote_std[int(key)] = np.std(igrec_res[key].values())
 
     print 'parsing step'
 
-    pos1 = {int(k): v[0] for k, v in max_final_second_vote.items()}
+    #pos1 = {int(k): v[0] for k, v in max_final_second_vote.items()}
     value1 = {int(k): v[1] for k, v in max_final_second_vote.items()}
-    pos2 = {int(k): v[0] for k, v in max_2nd_final_second_vote.items()}
+    #pos2 = {int(k): v[0] for k, v in max_2nd_final_second_vote.items()}
     value2 = {int(k): v[1] for k, v in max_2nd_final_second_vote.items()}
-    pos3 = {int(k): v[0] for k, v in max_3nd_final_second_vote.items()}
+    #pos3 = {int(k): v[0] for k, v in max_3nd_final_second_vote.items()}
     value3 = {int(k): v[1] for k, v in max_3nd_final_second_vote.items()}
     sizes = {int(k): v for k, v in sizes.items()}
 
-    print 'context step'
+    #print 'context step'
 
-    context1 = {}
-    context2 = {}
-    context3 = {}
-    context4 = {}
-    context5 = {}
+    #context1 = {}
+    #context2 = {}
+    #context3 = {}
+    #context4 = {}
+    #context5 = {}
 
-    for key in context:
-        temp_arr = list(context[key])
-        context1[int(key)] = temp_arr[0]
-        context2[int(key)] = temp_arr[1]
-        context3[int(key)] = temp_arr[2]
-        context4[int(key)] = temp_arr[3]
-        context5[int(key)] = temp_arr[4]
+    #for key in context:
+    #    temp_arr = list(context[key])
+    #    context1[int(key)] = temp_arr[0]
+    #    context2[int(key)] = temp_arr[1]
+    #    context3[int(key)] = temp_arr[2]
+    #    context4[int(key)] = temp_arr[3]
+    #    context5[int(key)] = temp_arr[4]
 
-    print 'mutation step'
+    #print 'mutation step'
 
-    mutated_letter = {}
-    for key in igrec_res:
-        mutated_letter[int(key)] = second_vote_letter(igrec_clusters[key], max_final_second_vote[key][0])
+    #mutated_letter = {}
+    #for key in igrec_res:
+    #    mutated_letter[int(key)] = second_vote_letter(igrec_clusters[key], max_final_second_vote[key][0])
 
-    df = pd.DataFrame({'pos1': pos1, 'value1': value1,
-                       'pos2': pos2, 'value2': value2,
-                       'pos3': pos3, 'value3': value3,
-                       'context1': context1,
-                       'context2': context2,
-                       'context3': context3,
-                       'context4': context4,
-                       'context5': context5,
-                       'mutated_letter': mutated_letter,
-                       'size': sizes,
-                       'second_vote_std': second_vote_std})
-
+    df = pd.DataFrame({#'pos1': pos1, 
+                       'value1': value1,
+                       #'pos2': pos2, 
+                       'value2': value2,
+                       #'pos3': pos3, 
+                       'value3': value3,
+                       #'context1': context1,
+                       #'context2': context2,
+                       #'context3': context3,
+                       #'context4': context4,
+                       #'context5': context5,
+                       #'mutated_letter': mutated_letter,
+                       'size': sizes
+                       #'second_vote_std': second_vote_std})
+                        })
     df.index = df.index.map(int)
     final_df = df
 
@@ -650,37 +654,45 @@ def build_ans_df(answer_dict):
 
     return ans_df
 
-def clusters_splitting(clusters, target_clusters):
+def clusters_splitting(clusters, target_clusters, threshold=5):
 
     temp_clusters = clusters.copy()
     clusters_id = map(lambda x: int(x), clusters.keys())
     max_id = max(clusters_id) + 1
 
+    print "LENGHT OF TARGET_CLUSTERS: ", len(target_clusters)
+
     for cluster in target_clusters:
         print 'Splitting cluster: ', cluster, ' with length ', len(temp_clusters[str(cluster)])
         first_part, second_part = split_by_2nd_vote(clusters[str(cluster)], threshold=0)
-        del temp_clusters[str(cluster)]
 
-        if first_part and not second_part:
-            temp_clusters[str(max_id)] = first_part
-            print 'New cluster ', max_id, ' with length ', len(first_part)
-            print '\n'
-            max_id += 1
+        if len(first_part) > threshold and len(second_part) > threshold:
 
-        elif second_part and not first_part:
-            temp_clusters[str(max_id)] = second_part
-            print 'New cluster ', max_id, ' with length ', len(second_part)
-            print '\n'
-            max_id += 1
+            del temp_clusters[str(cluster)]
 
-        elif second_part and second_part:
-            temp_clusters[str(max_id)] = first_part
-            temp_clusters[str(max_id + 1)] = second_part
-            print 'New clusters ', max_id, ' and ', max_id + 1,  ' with length ', len(first_part), ' and ', len(second_part)
-            max_id += 2
-            print '\n'
+            if first_part and not second_part:
+                temp_clusters[str(max_id)] = first_part
+                print 'New cluster ', max_id, ' with length ', len(first_part)
+                print '\n'
+                max_id += 1
+
+            elif second_part and not first_part:
+                temp_clusters[str(max_id)] = second_part
+                print 'New cluster ', max_id, ' with length ', len(second_part)
+                print '\n'
+                max_id += 1
+
+            elif second_part and second_part:
+                temp_clusters[str(max_id)] = first_part
+                temp_clusters[str(max_id + 1)] = second_part
+                print 'New clusters ', max_id, ' and ', max_id + 1,  ' with length ', len(first_part), ' and ', len(second_part)
+                max_id += 2
+                print '\n'
+            else:
+                print 'Both parts are empty\n'
+
         else:
-            print 'Both parts are empty\n'
+            print "One/Both of splitted clusters is/are too small"
 
     return temp_clusters
 
