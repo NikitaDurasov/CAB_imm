@@ -83,7 +83,6 @@ def read_rcm(filename):
     rcm = open(filename)
     rcm = rcm.readlines()
     rcm = [x[:-1] for x in rcm]
-    rcm.close()
     return dict(map(lambda x: x.split("\t"), rcm))
 
 
@@ -692,18 +691,31 @@ def clusters_splitting(clusters, target_clusters, threshold=5):
                 print 'Both parts are empty\n'
 
         else:
-            print "One/Both of splitted clusters is/are too small"
+            print "One/Both of splitted clusters is/are too small\n"
 
     return temp_clusters
 
 def to_rcm(filename, clusters, id_dict):
 
-    read2id = {v:k for k, v in id_dict.items()}
+    #read2id = {v:k for k, v in id_dict.items()}
+    #output = open(filename, 'w')
+
+    #for cluster in clusters:
+    #    for read in clusters[cluster]:
+    #        output.write(read2id[read] + '\t' + cluster + '\n')
+
     output = open(filename, 'w')
+
+    read2id = defaultdict(lambda : [])
+    for read_id in id_dict:
+        read2id[id_dict[read_id]].append(read_id)
 
     for cluster in clusters:
         for read in clusters[cluster]:
-            output.write(read2id[read] + '\t' + cluster + '\n')
+            output.write(read2id[read][0] + '\t' + cluster + '\n')
+            del read2id[read][0]
+
+    output.close()
 
 
 class First_lvl_stacking:
@@ -848,5 +860,65 @@ def compare_sizes(first_rcm_file, second_rcm_file, input_reads):
 
     #FINISH
 
+def sens_prec_plot(igrec_json, test_json, axe):
+        axe.plot(test_json['reference_based']['__data_precision'], test_json['reference_based']['__data_sensitivity'], label='test', c='r')
+        axe.plot(igrec_json['reference_based']['__data_precision'], igrec_json['reference_based']['__data_sensitivity'], label='igrec', c='b')
+
+        axe.scatter(test_json['reference_based']['__data_precision'], test_json['reference_based']['__data_sensitivity'], s=5, c='r')
+        axe.scatter(igrec_json['reference_based']['__data_precision'], igrec_json['reference_based']['__data_sensitivity'], s=5, c='b')
+
+        axe.scatter(test_json['reference_based']['__data_precision'][4], test_json['reference_based']['__data_sensitivity'][4], s=20, c='k')
+        axe.scatter(igrec_json['reference_based']['__data_precision'][4], igrec_json['reference_based']['__data_sensitivity'][4], s=20, c='k')
 
 
+def res_cons(input_reads, ref_rcm_file, cons_rcm_file):
+        id_dict = func_tools.id_to_read(input_reads)
+
+        ref_rcm = func_tools.read_rcm(ref_rcm_file)
+        cons_rcm = func_tools.read_rcm(cons_rcm_file)
+
+        ref_clusters = func_tools.construct_clusters(ref_rcm, id_dict)
+        cons_clusters = func_tools.construct_clusters(cons_rcm, id_dict)
+
+        rep = func_tools.clusters2rep(ref_clusters)
+        cons_rep = func_tools.clusters2rep(cons_clusters)
+
+        res = func_tools.find_unrecognized_clusters(rep, cons_rep)
+
+        return (res, ref_clusters, cons_clusters)
+
+def unrecognized_clusters_sizes(input_reads, ref_rcm_file, cons_rcm_file):
+    res = res_cons(input_reads, ref_rcm_file, cons_rcm_file)
+
+    r = set(res[0])
+    ref_clusters = res[1]
+    cons_clusters = res[2]
+
+    missed_clusters = {cluster:ref_clusters[cluster] for cluster in r}
+    missed_sizes = func_tools.clusters_size_dict(missed_clusters)
+    all_sizes = func_tools.clusters_size_dict(ref_clusters)
+    missed_freq = defaultdict(lambda : 0, Counter(missed_sizes.values()))
+    all_freq = defaultdict(lambda : 0, Counter(all_sizes.values()))
+
+    perc_sizes_hist = []
+    for i in range(5, 200):
+        if all_freq[i]:
+            sizes_hist.append(1.0 * missed_freq[i] / all_freq[i])
+        else:
+            sizes_hist.append(0)
+
+    sizes_hist = []
+    for i in range(5, 200):
+        if all_freq[i]:
+            sizes_hist.append(missed_freq[i])
+        else:
+            sizes_hist.append(0)
+
+    return_dict = {}
+    return_dict['perc_sizes_hist'] = perc_sizes_hist
+    return_dict['sizes_hist'] = sizes_hist
+    return_dict['reference_clusters'] = ref_clusters
+    return_dict['constructed_clusters'] = cons_clusters 
+    return_dict['unrecognized_clusters'] = r
+
+    return return_dict

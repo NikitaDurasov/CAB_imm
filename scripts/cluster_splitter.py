@@ -33,16 +33,16 @@ log_file.write('Clusters with sizes more than 10: ' + str(len(data)) + '\n')
 
 target_index = data.index
 
-pp = pickle.load(open('../data/models/pipe_model2', 'rb'))
+pp = pickle.load(open('../data/models/pipe_model', 'rb'))
 
 data = pp.steps[0][1].transform(data)
 data = pd.DataFrame(data)
 data.columns = ['0','1','2','3'] 
-#logreg = pd.Series(pp.steps[1][1].models['first_lvl'][0].predict(data), index=target_index)
+logreg = pd.Series(pp.steps[1][1].models['first_lvl'][0].predict(data), index=target_index)
 xgb  = pd.Series(pp.steps[1][1].models['first_lvl'][1].predict(data), index=target_index)
 
-#ans = pp.steps[2][1].predict(pd.concat([logreg, xgb], axis=1))
-ans = xgb
+ans = pp.steps[2][1].predict(pd.concat([logreg, xgb], axis=1))
+#ans = xgb
 
 ans = pd.Series(ans, index = target_index)
 target_clusters = ans[ans == 1]
@@ -57,7 +57,7 @@ clusters = func_tools.construct_clusters(igrec_rcm, id_dict)
 print "Clusters in IgReC output: ", len(clusters), '\n'
 log_file.write('Clusters in IgReC output: ' + str(len(clusters)) + '\n' )
 
-clusters = func_tools.clusters_splitting(clusters, list(target_clusters.index), threshold=500)
+clusters = func_tools.clusters_splitting(clusters, list(target_clusters.index), threshold=5)
 print "Clusters in splitted IgReC output: ", len(clusters), '\n'
 log_file.write('Clusters in splitted IgReC output: ' + str(len(clusters)) + '\n' )
 
