@@ -872,18 +872,18 @@ def sens_prec_plot(igrec_json, test_json, axe):
 
 
 def res_cons(input_reads, ref_rcm_file, cons_rcm_file):
-        id_dict = func_tools.id_to_read(input_reads)
+        id_dict = id_to_read(input_reads)
 
-        ref_rcm = func_tools.read_rcm(ref_rcm_file)
-        cons_rcm = func_tools.read_rcm(cons_rcm_file)
+        ref_rcm = read_rcm(ref_rcm_file)
+        cons_rcm = read_rcm(cons_rcm_file)
 
-        ref_clusters = func_tools.construct_clusters(ref_rcm, id_dict)
-        cons_clusters = func_tools.construct_clusters(cons_rcm, id_dict)
+        ref_clusters = construct_clusters(ref_rcm, id_dict)
+        cons_clusters = construct_clusters(cons_rcm, id_dict)
 
-        rep = func_tools.clusters2rep(ref_clusters)
-        cons_rep = func_tools.clusters2rep(cons_clusters)
+        rep = clusters2rep(ref_clusters)
+        cons_rep = clusters2rep(cons_clusters)
 
-        res = func_tools.find_unrecognized_clusters(rep, cons_rep)
+        res = find_unrecognized_clusters(rep, cons_rep)
 
         return (res, ref_clusters, cons_clusters)
 
@@ -895,20 +895,20 @@ def unrecognized_clusters_sizes(input_reads, ref_rcm_file, cons_rcm_file):
     cons_clusters = res[2]
 
     missed_clusters = {cluster:ref_clusters[cluster] for cluster in r}
-    missed_sizes = func_tools.clusters_size_dict(missed_clusters)
-    all_sizes = func_tools.clusters_size_dict(ref_clusters)
+    missed_sizes = clusters_size_dict(missed_clusters)
+    all_sizes = clusters_size_dict(ref_clusters)
     missed_freq = defaultdict(lambda : 0, Counter(missed_sizes.values()))
     all_freq = defaultdict(lambda : 0, Counter(all_sizes.values()))
 
     perc_sizes_hist = []
-    for i in range(5, 200):
+    for i in range(1, 100):
         if all_freq[i]:
-            sizes_hist.append(1.0 * missed_freq[i] / all_freq[i])
+            perc_sizes_hist.append(1.0 * missed_freq[i] / all_freq[i])
         else:
-            sizes_hist.append(0)
+            perc_sizes_hist.append(0)
 
     sizes_hist = []
-    for i in range(5, 200):
+    for i in range(1, 100):
         if all_freq[i]:
             sizes_hist.append(missed_freq[i])
         else:
