@@ -276,11 +276,19 @@ def find_max_dict(dictionary):
     """
     Find maximal element in dictionary in values
     :param dictionary: dict with numeric value
+    :return: key for maximal value
     """
     return max(dictionary.iteritems(), key=operator.itemgetter(1))[0] if dictionary else -1
 
 
 def check_size(first_splitted_part, second_splitted_part, threshold=5):
+    """
+    Function check if sizes of splitted clusters are more than theshold and delete small clusters
+    :param first_splitted_part: first part of splitted cluster
+    :param second_slpitted_part: second part of splitted cluster
+    :param threshold: threshold for deleting
+    :return: tuple of checked clusters; cluster is empty, if size is less than threshold
+    """
     if len(first_splitted_part) < threshold and len(second_splitted_part) < threshold:
         return ([], [])
 
@@ -294,17 +302,29 @@ def check_size(first_splitted_part, second_splitted_part, threshold=5):
         return (first_splitted_part, second_splitted_part)
 
 def split_by_2nd_vote(cluster, threshold=5):
+    """
+    Split cluster by position where second vote value is maximal
+    :param cluster: cluster (list of strings with nucleotides) for splitting
+    :param threshold: threshold for deleting too small clusters
+    :return: tuple of splitted clusters
+    """
     max_2nd_vote_pos = find_max_dict(second_vote(cluster))
     return split_cluster(cluster, max_2nd_vote_pos, threshold=threshold) if max_2nd_vote_pos != -1 else check_size(cluster, [], threshold=threshold)
 
 def clusters2rep(clusters):
+    """
+    Construct repertoire from clusters
+    :param clusters: dict of pairs: (cluster id, list of strings)
+    :return: list of strings
+    """
+    Construct repertoire
     rep = {}
     for key in clusters:
         rep[key] = (major_vote(clusters[key]))
     return rep
 
 
-def quality(constructed_rep, reference, type='sum'):
+def quality(constructed_rep, reference, type='sum'): # DELETE 
     if type == 'sum':
         ref = set(reference)
         con = set(constructed_rep)
@@ -329,9 +349,16 @@ def quality(constructed_rep, reference, type='sum'):
         return precision * sensitivity
 
 
-def clusters_classification(clusters, reference, constructed_rep):
+def clusters_classification(clusters, reference):
+    """
+    Classify clusters to two classes: 0 and 1; 0 - if quality of constructed
+    repertoire will increase after splitting, 1 - vise versa
+    :param clusters: dict of clusters
+    :param reference: list of strings
+    :return: dict of pairs: (cluster id, class labal)
+    """
     print "Repertoire construction started"
-    #constructed_rep = clusters2rep(clusters)
+    constructed_rep = clusters2rep(clusters)
     print "END"
     quality_0 = quality(constructed_rep.values(), reference)
     res = {}
@@ -358,6 +385,14 @@ def clusters_classification(clusters, reference, constructed_rep):
 
 
 def simple_clusters_classification(clusters, reference):
+    """
+    For every cluster in cluster function tries to split it and check if
+    splitted parts are in refereence repertoire, than clusters are 
+    classified to 0 and 1 appropriately to this information
+    :param clusters: dict of pairs: (cluster id, list of strings)
+    :param reference: list of strings
+    :return: dict of pairs: (cluster id, class label)
+    """
     ref = set(reference)
     res = {}
     for i, key in enumerate(clusters):
@@ -430,6 +465,12 @@ def simple_clusters_classification(clusters, reference):
     return res
 
 def clusters_filtering(clusters, threshold=5):
+    """
+    Delete all clusters from input clusters with size less than threshold
+    :param clusters: dict of pairs: (cluster id, list of strings)
+    :param threshold: threshold for deleting
+    :return: dict of pairs: (cluster id, list of strings)
+    """
     filtered_clusters = {}
 
     for key in clusters:
@@ -440,6 +481,14 @@ def clusters_filtering(clusters, threshold=5):
 
 
 def n_second_vote(second_vote, n=0):
+    """
+    For dict of pairs: (cluster id, dict od pairs: (position, second vote value)),
+    construct dict of pairs: (cluster id, value of n-th second vote in cluster)
+    :param second vote: dict of pairs: (cluster id, dict od pairs: (position, second vote value)),
+    construct dict of pairs: (cluster id, value of n-th second vote in cluster)
+    :param n: number of second vote value in cluster
+    :return: dict of pairs: (cluster id, tuple of n-th second vote in cluster)
+    """
     res  = {}
     for key in second_vote:
         if len(second_vote[key].values()) > n:
@@ -451,6 +500,13 @@ def n_second_vote(second_vote, n=0):
 
 
 def find_context(repertoire, max_second_vote, n=2):
+    """
+    Find context of position with maximal second vote in cluster
+    :param repertoire: dict of pairs: (cluster id, consensus of cluster)
+    :param max_second_vote: dict of pairs: (cluster id, position for context)
+    :param n: number of letters for context, whole context gonna be 2*n + 1 in lenght
+    :return: dict od pairs: (cluster id, contex string)
+    """
     res = {}
     for key in repertoire:
         position = max_second_vote[key][0]
@@ -463,8 +519,36 @@ def find_context(repertoire, max_second_vote, n=2):
 
 
 def build_df(input_reads, rcm_file, rcm_reference=None, fa_reference=None,
-        classification='simple', threshold=10):
-    print 'build_df started'
+             classification='simple', threshold=10):
+    """ 
+    Building pandas.DataFrame object for clusters
+    :param input_reads: file in .fa format with input reads
+    :param rcm_file: file in .rcm format with pairs of read id and cluster number
+    :param rcm_reference: file in .rcm format with pairs of read id  cluster
+    number for reference for reference repertoire
+    :param fa_reference: file in .fa format for repertoire of reference repertoire
+    :param classification: "simple": simple_clusters_classification function is used for
+    classfication, "colormap": reference_classification function is used for classificication
+    :param threshold: filter clusters with size less than threshold
+    :return: pandas.DataFrame with columns:
+        contex[1-5] - letters of contex for position with maximal second vote
+        mutated_letter - second in frequency letter in position with maximal
+        secons vote value
+        pos[1-3] - positions of first three maximal second votes
+        second_vote_std - standart deviation second vote value for cluster
+        size - size of the cluster
+        value[1-3] - three maximal second vote values
+        quality_imp - 1 - if splitting of cluster gonna increase quality of
+        constructed repertoire, 0 - vise versa
+    """
+
+    print "building of dataset from files: "
+    print "\t- input_reads: " + input_reads
+    print "\t- rcm_file: " + rcm_file
+    if rcm_reference:
+        print "\t- rcm_reference: " + rcm_reference
+    if fa_reference:
+        print "\t- fa_reference: " + fa_reference
 
     id_dict = id_to_read(input_reads)
 
@@ -477,13 +561,11 @@ def build_df(input_reads, rcm_file, rcm_reference=None, fa_reference=None,
     igrec_rcm = read_rcm(rcm_file)
 
     igrec_clusters = construct_clusters(igrec_rcm, id_dict)
-    print 'All clusters: ', len(igrec_clusters)
+    print 'All clusters found in files: ', len(igrec_clusters)
     igrec_clusters = clusters_filtering(igrec_clusters, threshold=threshold)
 
     igrec_rep = clusters2rep(igrec_clusters)
-    igrec_res = second_votes(clusters_filtering(igrec_clusters, threshold=0))
-
-    print 'calculation step'
+    igrec_res = second_votes(clusters_filtering(igrec_clusters, threshold=0)) # FIX ME
 
     max_final_second_vote = n_second_vote(igrec_res)
     max_2nd_final_second_vote = n_second_vote(igrec_res, n=1)
@@ -495,8 +577,6 @@ def build_df(input_reads, rcm_file, rcm_reference=None, fa_reference=None,
     #for key in igrec_res:
     #    second_vote_std[int(key)] = np.std(igrec_res[key].values())
 
-    print 'parsing step'
-
     #pos1 = {int(k): v[0] for k, v in max_final_second_vote.items()}
     value1 = {int(k): v[1] for k, v in max_final_second_vote.items()}
     #pos2 = {int(k): v[0] for k, v in max_2nd_final_second_vote.items()}
@@ -504,8 +584,6 @@ def build_df(input_reads, rcm_file, rcm_reference=None, fa_reference=None,
     #pos3 = {int(k): v[0] for k, v in max_3nd_final_second_vote.items()}
     value3 = {int(k): v[1] for k, v in max_3nd_final_second_vote.items()}
     sizes = {int(k): v for k, v in sizes.items()}
-
-    #print 'context step'
 
     #context1 = {}
     #context2 = {}
@@ -521,7 +599,6 @@ def build_df(input_reads, rcm_file, rcm_reference=None, fa_reference=None,
     #    context4[int(key)] = temp_arr[3]
     #    context5[int(key)] = temp_arr[4]
 
-    #print 'mutation step'
 
     #mutated_letter = {}
     #for key in igrec_res:
@@ -547,7 +624,8 @@ def build_df(input_reads, rcm_file, rcm_reference=None, fa_reference=None,
 
     if fa_reference:
 
-        print 'answers DataFrame'
+        print ('building answers DataFrame from ' + fa_reference + ' using "' +
+        classfication + '" type for classification'
 
         if classification == 'simple':
             ans_dict = simple_clusters_classification(igrec_clusters, rep)
@@ -562,11 +640,18 @@ def build_df(input_reads, rcm_file, rcm_reference=None, fa_reference=None,
 
             final_df = pd.concat([final_df, ans_df], axis=1)
 
-    print 'building succeeded'
+     print 'building succeeded with: '
+     print '\t- dataframe lenght: ', len(final_df)
+     if fa_reference:
+        count = Counter(final_df['quality_imp'])
+        print '\t- classification results: ',
+        print '\t\t0 - ', count[0]
+        print '\t\t1 - ', count[1]
+
     return final_df
 
 
-def build_df_preload(igrec_clusters, igrec_rep, igrec_res):
+def build_df_preload(igrec_clusters, igrec_rep, igrec_res): #DELETE
 
     print 'build_df started'
     print 'calculation step'
@@ -631,6 +716,16 @@ def build_df_preload(igrec_clusters, igrec_rep, igrec_res):
     return df
 
 def build_ans_df(answer_dict):
+    """
+    Function return pandas.DataFrame object with results of classification from
+    simple_cluster_classification
+    :param answer_dict: dict with pairs: (cluster id, list:
+        class_label - 0 or 1
+        origin_cluster - '+' or '-', was origin cluster in reference repertoire or not 
+        first_cluster - '+' or '-', is first splitted part in reference repertoire or not 
+        second_cluster - '+' or '-', is second splitted part in reference repertoire or not)
+    :return: pandas.DataFrame object with results
+    """
 
     class_label = {}
     origin_cluster = {}
@@ -654,7 +749,6 @@ def build_ans_df(answer_dict):
     return ans_df
 
 def clusters_splitting(clusters, target_clusters, threshold=5):
-
     temp_clusters = clusters.copy()
     clusters_id = map(lambda x: int(x), clusters.keys())
     max_id = max(clusters_id) + 1
