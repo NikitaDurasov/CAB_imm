@@ -749,6 +749,15 @@ def build_ans_df(answer_dict):
     return ans_df
 
 def clusters_splitting(clusters, target_clusters, threshold=5):
+    """
+    Fuction for splitting target_clusters keys in clusters:
+    :param clusters: dict with pairs: (cluster id, list of strings)
+    :param target_clusters: id of clusters for splitting, strings list
+    :param threshold: after splitting if one of splitted parts is less in
+    size than threshold, than splitting is canceled
+    :return: new clusters with splitted
+    """
+
     temp_clusters = clusters.copy()
     clusters_id = map(lambda x: int(x), clusters.keys())
     max_id = max(clusters_id) + 1
@@ -790,8 +799,14 @@ def clusters_splitting(clusters, target_clusters, threshold=5):
     return temp_clusters
 
 def to_rcm(filename, clusters, id_dict):
-
-    #read2id = {v:k for k, v in id_dict.items()}
+    """
+    Saves clusters dict to .rcm file
+    :param filename: filename for created file 
+    :param clusters: dict with pairs: (cluster id, list of strings)
+    :param id_dict: dict with pairs: (read_id, read)
+    """
+    # DELETE
+    #read2id = {v:k for k, v in id_dict.items()} 
     #output = open(filename, 'w')
 
     #for cluster in clusters:
@@ -812,7 +827,7 @@ def to_rcm(filename, clusters, id_dict):
     output.close()
 
 
-class First_lvl_stacking:
+class First_lvl_stacking: # FIX ME
 
     def __init__(self, models):
         self.models = models
@@ -827,44 +842,51 @@ class First_lvl_stacking:
 
 
 def logreg_xgboost_stack(X, y, sample_weight=None):
+    """
+    Function for building stacking model from xgboost and logreg on low level and 
+    log reg on high level
+    :param X: features of objects in dataset
+    :param y: labels for object classes
+    :param sample_weight: weight for objects in loss function
+    :return: dict with models
+    """
+    logreg_cls = LogisticRegression()
+    xgb_cls = xgb.XGBClassifier()
 
-        logreg_cls = LogisticRegression()
-        xgb_cls = xgb.XGBClassifier()
+    X_train_first, X_train_second, y_train_first, y_train_second = train_test_split(X, y, stratify=y,
+    test_size=0.2, train_size=0.8)
 
-        X_train_first, X_train_second, y_train_first, y_train_second = train_test_split(X, y, stratify=y,
-        test_size=0.2, train_size=0.8)
+    kf = KFold(n_splits=5, shuffle=True)
 
-        kf = KFold(n_splits=5, shuffle=True)
+    ans_logreg = pd.Series()
+    ans_xgb = pd.Series()
 
-        ans_logreg = pd.Series()
-        ans_xgb = pd.Series()
+    best_param1 = [{}, 0]
+    best_param2 = [{}, 0]
 
-        best_param1 = [{}, 0]
-        best_param2 = [{}, 0]
+    gs1 = GridSearchCV(estimator=logreg_cls, param_grid={'C': np.linspace(1e-4, 1, 10)},
+                           scoring='roc_auc', fit_params={'sample_weight': sample_weight.iloc[X_train_first.index]}, n_jobs=1)
+    gs2 = RandomizedSearchCV(estimator = xgb_cls,
+                             scoring = 'roc_auc',
+                             param_distributions = {'subsample': np.linspace(0.5, 0.9, 3),
+                                                    'max_depth': range(1,6,2), 
+                                                    'n_estimators': range(20, 70, 10), 
+                                                    'min_child_weight': range(2,8,3), 
+                                                    'learning_rate': np.linspace(1e-4, 0.1, 5)}, 
+                             cv=3, n_jobs=1,
+                             fit_params={'sample_weight': sample_weight.iloc[X_train_first.index]}) 
 
-        gs1 = GridSearchCV(estimator=logreg_cls, param_grid={'C': np.linspace(1e-4, 1, 10)},
-                               scoring='roc_auc', fit_params={'sample_weight': sample_weight.iloc[X_train_first.index]}, n_jobs=1)
-        gs2 = RandomizedSearchCV(estimator = xgb_cls,
-                                 scoring = 'roc_auc',
-                                 param_distributions = {'subsample': np.linspace(0.5, 0.9, 3),
-                                                        'max_depth': range(1,6,2), 
-                                                        'n_estimators': range(20, 70, 10), 
-                                                        'min_child_weight': range(2,8,3), 
-                                                        'learning_rate': np.linspace(1e-4, 0.1, 5)}, 
-                                 cv=3, n_jobs=1,
-                                 fit_params={'sample_weight': sample_weight.iloc[X_train_first.index]}) 
+    gs1.fit(X_train_first, y_train_first)
 
-        gs1.fit(X_train_first, y_train_first)
+    gs2.fit(X_train_first, y_train_first)
 
-        gs2.fit(X_train_first, y_train_first)
+    pred_feat_logreg = pd.Series(gs1.best_estimator_.predict(X_train_second), index=X_train_second.index)
+    pred_feat_xgb = pd.Series(gs2.best_estimator_.predict(X_train_second), index=X_train_second.index)
 
-        pred_feat_logreg = pd.Series(gs1.best_estimator_.predict(X_train_second), index=X_train_second.index)
-        pred_feat_xgb = pd.Series(gs2.best_estimator_.predict(X_train_second), index=X_train_second.index)
+    logreg_cls_second = LogisticRegression()
+    logreg_cls_second.fit(pd.concat([pred_feat_logreg, pred_feat_xgb], axis=1), y_train_second)
 
-        logreg_cls_second = LogisticRegression()
-        logreg_cls_second.fit(pd.concat([pred_feat_logreg, pred_feat_xgb], axis=1), y_train_second)
-
-        return {'first_lvl': [logreg_cls_first, xgb_cls_first], 'second_lvl': [logreg_cls_second]}
+    return {'first_lvl': [logreg_cls_first, xgb_cls_first], 'second_lvl': [logreg_cls_second]}
 
 
 def reference_classification(clusters, reference_rcm, reference, id_dict):
