@@ -14,4 +14,8 @@ python ig_cluster_splitter.py -s input_reads.fa -r igrec_output.rcm -o dir/ -f f
 ## Motivation
 
 Original IgReC tool suffer from overcorrection problem - mutations in antibodies often are threated as amplification errors 
-and IgReC tool trying to fix them. In this project was made an attempt to construct ML model to reduce this effect. Slides about the topic and some information about results of the project are [here](https://docs.google.com/presentation/d/17QOT-wQAiNQqK-YnIj34VaYi4yobI6B1sTKvbnzlsHY/edit#slide=id.g238dd5aaef_0_7).
+and IgReC tool trying to fix them. 
+
+In this project was made an attempt to construct ML model to reduce this effect. 
+
+Slides about the topic and some information about results of the project are [here](https://docs.google.com/presentation/d/17QOT-wQAiNQqK-YnIj34VaYi4yobI6B1sTKvbnzlsHY/edit#slide=id.g238dd5aaef_0_7).
