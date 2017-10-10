@@ -18,4 +18,4 @@ and IgReC tool trying to fix them.
 
 In this project was made an attempt to construct ML model to reduce this effect. 
 
-Slides about the topic and some information about results of the project are [here](https://docs.google.com/presentation/d/17QOT-wQAiNQqK-YnIj34VaYi4yobI6B1sTKvbnzlsHY/edit#slide=id.g238dd5aaef_0_7).
+Slides about the topic and some information about results of the project are [here](https://docs.google.com/presentation/d/17QOT-wQAiNQqK-YnIj34VaYi4yobI6B1sTKvbnzlsHY/edit#slide=id.g238dd5aaef_0_7) or in [this](https://drive.google.com/open?id=0B8-bo9EAqeQgaW8wZFlCeHE3Smc) small report.
