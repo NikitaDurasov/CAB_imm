@@ -8,7 +8,7 @@ ig_cluster_splitter is used to divide clusters of read's collected from
 ## Code Examples
 
 ```
-python ig_cluster_splitter.py -s input_reads.fa -r igrec_output.rcm -o dir/ -f filename
+python scripts/ig_cluster_splitter.py -s input_reads.fa -r igrec_output.rcm -o dir/ -f filename
 ```
 
 ## Motivation
